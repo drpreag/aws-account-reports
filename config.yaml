@@ -1,0 +1,29 @@
+
+profiles:
+- audit
+- backup
+- c4data
+- c4domains
+- c4it
+- ce-dev
+- ce-prod
+- cs-dev
+- cs-prod
+- control4master
+- control4
+- datalake
+- ddnsaws
+- drivers-dev
+- drivers-prod
+- it-pakedge
+- logarchive
+- mte-dev
+- mte-prod
+- networking-prod
+- ovrc-dev
+- ovrc-devops
+- ovrc-prod
+- ovrc-stage
+- pe-dev
+- pe-prod
+- cybersec

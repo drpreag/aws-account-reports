@@ -1,4 +1,4 @@
 boto3
 termcolor
 uuid
-configparser
+PyYAML

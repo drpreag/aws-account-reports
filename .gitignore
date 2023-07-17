@@ -1,2 +1,5 @@
 env
-config.txt
+.vscode
+.venv
+report.txt
+

@@ -1,5 +1,5 @@
 # Purpose: in single aws profile search for ec2 instances
-# by name, aws account, region, status or a tag value.
+# by name, aws account/profile, region, status or a tag value.
 # Search criterias can be combined.
 #
 # Author Predrag Vlajkovic, 2019
@@ -48,9 +48,9 @@ def get_instances(session, ec2_name, region, status):
 
 # process command line arguments and return list of key pair values
 def process_cli_arguments (argv):
-    parameters = ["*", "*", "*", "*", "*", "default"]
+    parameters = ["*", "*", "*", "*", "default"]
     try:
-        opts, args = getopt.getopt(argv,"a:r:n:s:t:p:h",["account=","region=","name=","status=","tag=","profile=","--help"])
+        opts, args = getopt.getopt(argv,"a:r:n:s:t:p:h",["region=","name=","status=","tag=","profile=","--help"])
     except getopt.GetoptError:
         print ("Invalid parameters, to see parameter map use:")
         print ("   ec2-search.py -h")
@@ -58,22 +58,20 @@ def process_cli_arguments (argv):
 
     for opt, arg in opts:
         if opt in ("-h", "--help"):
-            print ("Usage: ec2-search.py --name <ec2_name> --account <account> --region <region> --status <status> --tag <tag value> --profile <profile_name> --help")
-            print ("   or: ec2-search.py -n <ec2_name> -a <account> -r <region> -s <status> -t <tag value> -p <profile_name> -h")
-            print ("   Assumed * for ec2_name, account, region and status, and default for profile_name if not specified")
+            print ("Usage: ec2-search.py --name <ec2_name> --region <region> --status <status> --tag <tag value> --profile <profile_name> --help")
+            print ("   or: ec2-search.py -n <ec2_name> -r <region> -s <status> -t <tag value> -p <profile_name> -h")
+            print ("   Assumed * for ec2_name, region and status, and default for profile_name if not specified")
             sys.exit()
         elif opt in ("-n", "--name"):
             parameters[0]=arg
-        elif opt in ("-a", "--account"):
-            parameters[1]=arg
         elif opt in ("-r", "--region"):
-            parameters[2]=arg
+            parameters[1]=arg
         elif opt in ("-s", "--status"):
-            parameters[3]=arg
+            parameters[2]=arg
         elif opt in ("-t", "--tag"):
-            parameters[4]=arg
+            parameters[3]=arg
         elif opt in ("-p", "--profile"):
-            parameters[5]=arg
+            parameters[4]=arg
         else:
             assert False, "unhandled option"
 
@@ -82,14 +80,13 @@ def process_cli_arguments (argv):
 def main(argv=None):
     parameters = process_cli_arguments(argv)
     ec2_name=parameters[0]
-    account_name=parameters[1]
-    region_name=parameters[2]
-    status=parameters[3]
-    tag_value=parameters[4]
-    profile_name=parameters[5]
+    region_name=parameters[1]
+    status=parameters[2]
+    tag_value=parameters[3]
+    profile_name=parameters[4]
 
     count = 0
-    print (f"Searching for ec2 instances named like {ec2_name}, in aws account {account_name}, in region {region_name}, with tag value {tag_value}, with status {status}, in aws profile {profile_name}")
+    print (f"Searching for ec2 instances named like {ec2_name}, in aws account/profile {profile_name}, in region {region_name}, with tag value {tag_value}, with status {status}!")
     session = get_session(profile_name)
     for region in session.client('ec2').describe_regions()['Regions']:
         if (region_name=="*" or region_name==region["RegionName"]):
@@ -99,10 +96,7 @@ def main(argv=None):
             for instance in instances:
                 if (is_tag_value_matching (instance, tag_value)):
                     count += 1
-                    if (len(get_ec2_tag(instance,'SaltEnv'))<2):
-                        print (f"    Instance: #{count:3d};  name: {get_ec2_tag(instance,'Name')};  id: {instance['InstanceId']};  status: {instance['State']['Name']}")
-                    else:
-                        print (f"    Instance: #{count:3d};  name: {get_ec2_tag(instance,'Name')};  id: {instance['InstanceId']};  status: {instance['State']['Name']};  saltenv: {get_ec2_tag(instance,'SaltEnv')}")
+                    print (f"    Instance: #{count:3d};  name: {get_ec2_tag(instance,'Name')};  id: {instance['InstanceId']};  status: {instance['State']['Name']}")
     if (count > 0):
         print (f"Total {count} instances found")
     else:

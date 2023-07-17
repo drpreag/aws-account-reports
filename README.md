@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 ...
 
-run python scripts
+run desired python script(s)
 
 ...
 
@@ -25,10 +25,3 @@ run python scripts
 deactivate
 ```
 
-# config.txt example
-config.txt is mandatory for ec2-search-org.py script only
-```
-[aws]
-main_account=111222333444
-main_account_profile=default
-```
