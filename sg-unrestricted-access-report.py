@@ -1,5 +1,5 @@
-# Purpose: in all accouts, all regions search for all VPCs
-# and report if VPC has no compute resources (dummy, orphan vpc)
+# Purpose: in all accouts, all regions search for all voulnerable security group rules,
+# the ones that have in ingress rules source CIDR block wide opet (0.0.0.0/0)
 #
 # Author Predrag Vlajkovic, 2023
 
@@ -84,15 +84,13 @@ def main(argv=None):
     count = 1
 
     print ("\nV P C   R E P O R T\n")
-    print ("List of Security groups with unrestricted access (0.0.0.0/0).")
+    print ("List of Security group rules with unrestricted access (0.0.0.0/0).")
     print ("")
 
     for profile in global_config['profiles']:
         session = boto3.Session(profile_name=profile)
         available_regions = get_enabled_regions (session, "ec2")
-        # print (f"Profile: {profile}")
         for region in available_regions:
-            # print (f"   Region: {region}")
             vpcs = get_vpc_info (session, region)
             ec2 = session.client('ec2', region_name=region)
             if vpcs:
@@ -105,8 +103,14 @@ def main(argv=None):
                                 try:
                                     if 'CidrIpv4' in sgr:
                                         if sgr['CidrIpv4']=='0.0.0.0/0':
-                                            print (f"{count:4} - Pofile: {profile}; Region: {region};  VPC: {vpc['VpcId']};  SG: {sg['GroupId']};  Ports: {sgr['FromPort']}-{sgr['ToPort']};  Cidr: {sgr['CidrIpv4']}")
-                                            count+=1
+                                            fromPort = 0 if sgr['FromPort']==-1 else sgr['FromPort']
+                                            toPort = 65535 if sgr['ToPort']==-1 else sgr['ToPort']
+                                            if fromPort==toPort: ports=fromPort
+                                            else:
+                                                ports=str(fromPort)+"-"+str(toPort)
+                                            if not (ports==443 or ports==22 or ports==80):
+                                                print (f"{count:4} - Pofile: {profile:12} Reion: {region:16} VPC: {vpc['VpcId']:24} SG: {sg['GroupId']:23} Ports: {ports:<11} Cidr: {sgr['CidrIpv4']}")
+                                                count+=1
                                 except botocore.exceptions.ClientError as e:
                                     pass
                     break
