@@ -1,5 +1,5 @@
 env
 .vscode
 .venv
-report.txt
+report*.txt
 
