@@ -109,7 +109,7 @@ def main(argv=None):
                                             else:
                                                 ports=str(fromPort)+"-"+str(toPort)
                                             if not (ports==443 or ports==22 or ports==80):
-                                                print (f"{count:4} - Pofile: {profile:12} Reion: {region:16} VPC: {vpc['VpcId']:24} SG: {sg['GroupId']:23} Ports: {ports:<11} Cidr: {sgr['CidrIpv4']}")
+                                                print (f"{count:4} - Pofile: {profile:12} Reion: {region:16} VPC: {vpc['VpcId']:24} SG: {sg['GroupId']:23} Ports: {ports:<11} Source: {sgr['CidrIpv4']}")
                                                 count+=1
                                 except botocore.exceptions.ClientError as e:
                                     pass
