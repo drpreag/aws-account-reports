@@ -33,6 +33,7 @@ elbV2_client = session.client('elbv2', region_name=args.region)
 elb_client = session.client('elb', region_name=args.region)
 lambda_client = session.client('lambda', region_name=args.region)
 eks_client = session.client('eks', region_name=args.region)
+# ecs_client = session.client('ecs', region_name=args.region)
 asg_client = session.client('autoscaling', region_name=args.region)
 rds_client = session.client('rds', region_name=args.region)
 ec2 = session.resource('ec2', region_name=args.region)
@@ -98,6 +99,19 @@ def describe_ekss():
     logger.info("--------------------------------------------")
     return
 
+# def describe_ecss():
+#     ecss = ecs_client.list_clusters()['clusterArns']
+#     # print (ecss)
+
+#     logger.info("ECSs in VPC {}:".format(vpc_id))
+#     for ecs in ecss:
+#         ecs_clusters = ecs_client.describe_clusters(clusters=[ecs])['clusters']
+#         for cluster in ecs_clusters:
+#             print (cluster)
+
+
+#     logger.info("--------------------------------------------")
+#     return
 
 def describe_ec2s():
     waiter = vpc_client.get_waiter('instance_terminated')
@@ -313,6 +327,7 @@ if __name__ == '__main__':
 
     if vpc_in_region():
         describe_ekss()
+        # describe_ecss()
         describe_asgs()
         describe_rdss()
         describe_ec2s()

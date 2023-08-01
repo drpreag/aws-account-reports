@@ -27,37 +27,37 @@ def main(argv=None):
     print ("")
 
     for profile in global_config['profiles']:
-        print (f"Profile: {profile}")
         session = boto3.Session(profile_name=profile)
         s3 = session.client('s3')
         buckets = s3.list_buckets()['Buckets']
         for bucket in buckets:
             bpab = "-"
+            total+=1
             try:
                 bpab = s3.get_public_access_block(Bucket=bucket['Name'])
-                if not 'PublicAccessBlockConfiguration' in bpab:
-                    print (f"  {count+1:4} - Bucket: {bucket['Name']};  missing PublicAccessBlockConfiguration block;")
-
-                    count+=1
-                else:
-                    pabc = bpab['PublicAccessBlockConfiguration']
-                    if not (pabc['BlockPublicAcls'] and pabc['IgnorePublicAcls'] and pabc['BlockPublicPolicy'] and pabc['RestrictPublicBuckets']):
-                        print (f"  {count+1:4} - Bucket: {bucket['Name']};  bpab: {pabc};")
-                        count+=1
+                pabc = bpab['PublicAccessBlockConfiguration']
+                if not (pabc['BlockPublicAcls'] and pabc['IgnorePublicAcls'] and pabc['BlockPublicPolicy'] and pabc['RestrictPublicBuckets']):
+                    pass
             except botocore.exceptions.ClientError as e:
-                print (f"  {count+1:4} - Bucket: {bucket['Name']};  eception on missing BPAB;")
-                    # response_public = s3_client.put_public_access_block(
-                    #     Bucket=bucket['Name'],
-                    #     PublicAccessBlockConfiguration={
-                    #         'BlockPublicAcls': True,
-                    #         'IgnorePublicAcls': True,
-                    #         'BlockPublicPolicy': True,
-                    #         'RestrictPublicBuckets': True
-                    #     },
-                    # )
-                count+=1
-                pass
-            total+=1
+                try:
+                    bucket_policy = s3.get_bucket_policy (Bucket=bucket['Name'])
+                    pass
+                except botocore.exceptions.ClientError as e:
+                    print (f"  {count+1:4} - Profile: {profile:14}  Bucket: {bucket['Name']}    Finding: Missing PAB block and missing bucket policy")
+                    count+=1
+                    # this bucket can be updated with PAB set to true
+                    # if "cf-templates-" in bucket['Name']:
+                    #     print (f"         - Updating bucket: {bucket['Name']}")
+                    #     response = s3.put_public_access_block(
+                    #         Bucket=bucket['Name'],
+                    #         PublicAccessBlockConfiguration={
+                    #             'BlockPublicAcls': True,
+                    #             'IgnorePublicAcls': True,
+                    #             'BlockPublicPolicy': True,
+                    #             'RestrictPublicBuckets': True
+                    #         },
+                    #     )
+
 
     print (f"\nFound total {total} buckets, and {count} buckets have security issue.")
     print ("\nEnd of report.")

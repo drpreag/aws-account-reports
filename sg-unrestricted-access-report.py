@@ -18,51 +18,8 @@ def parse_config_file():
 
 def get_vpc_info (session, region):
     ec2 = session.client('ec2', region_name=region)
-    response = ec2.describe_vpcs(Filters=[{'Name':'isDefault','Values': ['false']},])
+    response = ec2.describe_vpcs()
     return response['Vpcs']
-
-def get_number_of_ec2s (session, region, vpc_id):
-    count=0
-    ec2 = session.client('ec2', region_name=region)
-    response = ec2.describe_instances(Filters=[{'Name':'vpc-id','Values': [vpc_id]},])
-    if response:
-        if response['Reservations']:
-            for instance in response['Reservations'][0]['Instances']:
-                count=count+1
-    return count
-
-def get_number_of_rdss (session, region, vpc_id):
-    count=0
-    rds = session.client('rds', region_name=region)
-    response = rds.describe_db_instances()
-    if response:
-        if response['DBInstances']:
-            for rds in response['DBInstances']:
-                if rds['DBSubnetGroup']['VpcId'] == vpc_id:
-                    count=count+1
-    return count
-
-def get_number_of_lambdas (session, region, vpc_id):
-    count=0
-    l = session.client('lambda', region_name=region)
-    response = l.list_functions()
-    if response:
-        if response['Functions']:
-            for f in response['Functions']:
-                if 'VpcConfig' in f:
-                    if f['VpcConfig']['VpcId'] == vpc_id:
-                        count=count+1
-    return count
-
-def get_name_tag(tags):
-    vpc_name = "-"
-    if len(tags) == 0:
-        return vpc_name
-    for tag in tags:
-        if (len(tag)>0):
-            if tag['Key'] == 'Name':
-                return tag['Value']
-    return vpc_name
 
 def get_enabled_regions(boto3_session: boto3.Session, service: str):
     regions = boto3_session.get_available_regions(service)
@@ -102,7 +59,7 @@ def main(argv=None):
                             if sgr['IsEgress']==False:
                                 try:
                                     if 'CidrIpv4' in sgr:
-                                        if sgr['CidrIpv4']=='0.0.0.0/0':
+                                        if sgr['CidrIpv4']=='0.0.0.0/0' or sgr['CidrIpv4']=="::/0":
                                             fromPort = 0 if sgr['FromPort']==-1 else sgr['FromPort']
                                             toPort = 65535 if sgr['ToPort']==-1 else sgr['ToPort']
                                             if fromPort==toPort: ports=fromPort

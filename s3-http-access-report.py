@@ -27,7 +27,6 @@ def main(argv=None):
     print ("")
 
     for profile in global_config['profiles']:
-        print (f"Profile: {profile}")
         session = boto3.Session(profile_name=profile)
         s3 = session.client('s3')
         buckets = s3.list_buckets()['Buckets']
@@ -37,10 +36,8 @@ def main(argv=None):
                 policy = bucket_policy['Policy']
                 if not "aws:SecureTransport" in policy:
                     count+=1
-                # else:
-                #     print (f"  {count+1:4} - Bucket: {bucket['Name']} policy contains aws:SecureTransport;")
             except botocore.exceptions.ClientError as e:
-                print (f"  {count+1:4} - Bucket: {bucket['Name']};  missing block http policy;")
+                print (f"  {count+1:4} - Profile; {profile:14}   Bucket: {bucket['Name']}   Finding: missing block http policy;")
                 count+=1
                 pass
             total+=1

@@ -5,7 +5,7 @@
 
 from __future__ import print_function
 import boto3, sys, botocore
-import yaml
+import yaml, getopt
 from uuid import uuid4
 
 global_cfg_ini_file="config.yaml"
@@ -54,6 +54,16 @@ def get_number_of_lambdas (session, region, vpc_id):
                         count=count+1
     return count
 
+def get_number_of_ngws (session, region, vpc_id):
+    count=0
+    ngws = session.client('ec2', region_name=region)
+    response = ngws.describe_nat_gateways(Filters=[{'Name':'vpc-id','Values': [vpc_id]},])
+    if response:
+        if response['NatGateways']:
+            for f in response['NatGateways']:
+                count=count+1
+    return count
+
 def get_name_tag(tags):
     vpc_name = "-"
     if len(tags) == 0:
@@ -79,12 +89,35 @@ def get_enabled_regions(boto3_session: boto3.Session, service: str):
                 raise
     return enabled_regions
 
+# process command line arguments and return list of key pair values
+def process_cli_arguments (argv):
+    parameters = ["0"]
+    try:
+        opts, args = getopt.getopt(argv,"t:h",["target=","--help"])
+    except getopt.GetoptError:
+        print ("Invalid parameters, to see parameter map use:")
+        print ("   vpc-empty-report.py -h")
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt in ("h", "--help"):
+            print ("Usage: vpc-empty-report.py --target <target> --help")
+            print ("   or: vpc-empty-report.py -t <target> -h")
+            sys.exit()
+        elif opt in ("-t", "--target"):
+            parameters[0]=arg
+        else:
+            assert False, "unhandled option"
+    return parameters
+
 def main(argv=None):
     global_config = parse_config_file()
+    parameters = process_cli_arguments(argv)
+    target=int(parameters[0])
     count = 1
 
     print ("\nV P C   R E P O R T\n")
-    print ("List of VPCs that have not any of EC2 / RDS instances or Lambdas.")
+    print (f"List of VPC-s that have EC2/RDS or Lambdas combined less or equal then {target}.")
     print ("")
 
     for profile in global_config['profiles']:
@@ -94,16 +127,21 @@ def main(argv=None):
             vpcs = get_vpc_info (session, region)
             if vpcs:
                 for vpc in vpcs:
-                    ec2 = rds = lams = True
+                    ec2s = rdss = lams = 0
                     vpc_name = "-"
-                    if get_number_of_ec2s(session, region, vpc['VpcId'])>0: ec2=False
-                    if get_number_of_rdss(session, region, vpc['VpcId'])>0: rds=False
-                    if get_number_of_lambdas(session, region, vpc['VpcId'])>0: lams=False
-                    if ec2 and rds and lams:
-                        if 'Tags' in vpc:
-                            vpc_name = get_name_tag (vpc['Tags'])
-                            print (f"   {count:3d} - Profile: {profile:14}  Region: {region:16}  VpcId: {vpc['VpcId']:23}  CIDR: {vpc['CidrBlock']:18}  VpcName: {vpc_name}")
-                            count+=1
+                    if 'Tags' in vpc:
+                        vpc_name = get_name_tag (vpc['Tags'])
+                    if vpc_name == "aws-controltower-VPC":
+                        continue
+                    ec2s = get_number_of_ec2s(session, region, vpc['VpcId'])
+                    rdss = get_number_of_rdss(session, region, vpc['VpcId'])
+                    lams = get_number_of_lambdas(session, region, vpc['VpcId'])
+                    if ec2s+rdss+lams <= target:
+                        ngws = get_number_of_ngws(session, region, vpc['VpcId'])
+                        print (f"   {count:3d} - Profile: {profile:14}  Region: {region:16}  Vpc: {vpc['VpcId']:23}  CIDR: {vpc['CidrBlock']:18}  Name: {vpc_name}")
+                        if ec2s+rdss+lams+ngws > 0:
+                            print (f"            ec2: {ec2s:2}    rds: {rdss:2}    lambda: {lams:2}     ngws: {ngws}")
+                        count+=1
     print ("\nEnd of report.")
 
 if __name__ == '__main__':
