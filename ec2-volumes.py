@@ -2,7 +2,7 @@
 # by name, aws account/profile, region, status or a tag value.
 # Search criterias can be combined.
 #
-# Author Predrag Vlajkovic, 2019-2024
+# Author Predrag Vlajkovic, 2024
 
 from __future__ import print_function
 import boto3, sys, getopt, yaml
@@ -22,8 +22,22 @@ def get_ec2_tag(instance, tag_name, default="-"):
         for tag in instance["Tags"]:
             if tag["Key"].lower() == tag_name.lower():
                 tag_value = tag["Value"]
-
     return tag_value
+
+# def get_ec2_volumes(session, instance_name, region):
+def get_ec2_volumes(session, instance, region):
+    ec2_client = session.client('ec2', region_name=region["RegionName"])
+    volumes = instance["BlockDeviceMappings"]
+    if (volumes):
+        for v in volumes:
+            response = ec2_client.describe_volumes(
+                VolumeIds=[
+                    v["Ebs"]["VolumeId"],
+                ],
+            )
+            if (response):
+                for r in response["Volumes"]:
+                    print("     ",r["VolumeId"], r["Size"])
 
 def is_tag_value_matching (instance, tag_value):
     if (tag_value == "*"):
@@ -98,15 +112,15 @@ def main(argv=None):
     count = 0
     print (f"Searching for ec2 instances named like {ec2_name}, in aws account/profile {profile_name}, in region {region_name}, with tag value {tag_value}, with status {status}!")
     for profile in global_config['profiles']:
-        if (profile_name == "*" or profile == profile_name):
-            session = boto3.Session(profile_name=profile)
-            for region in session.client('ec2').describe_regions()['Regions']:
-                if (region_name=="*" or region_name==region["RegionName"]):
-                    instances = get_instances(session, ec2_name, region, status, instance_id)
-                    for instance in instances:
-                        if (is_tag_value_matching (instance, tag_value)):
-                            count += 1
-                            print (f" #{count:3d};  name: {get_ec2_tag(instance,'Name')};  profile: {profile};  region: {region['RegionName']};  id: {instance['InstanceId']};  status: {instance['State']['Name']}")
+        session = boto3.Session(profile_name=profile)
+        for region in session.client('ec2').describe_regions()['Regions']:
+            if (region_name=="*" or region_name==region["RegionName"]):
+                instances = get_instances(session, ec2_name, region, status, instance_id)
+                for instance in instances:
+                    if (is_tag_value_matching (instance, tag_value)):
+                        count += 1
+                        print (f" #{count:3d};  name: {get_ec2_tag(instance,'Name')};  profile: {profile};  region: {region['RegionName']};  id: {instance['InstanceId']};  status: {instance['State']['Name']}")
+                        get_ec2_volumes(session, instance, region)
     if (count > 0):
         print (f"Total {count} instances found")
     else:

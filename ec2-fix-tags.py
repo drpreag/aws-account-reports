@@ -2,13 +2,13 @@
 # by name, aws account/profile, region, status or a tag value.
 # Search criterias can be combined.
 #
-# Author Predrag Vlajkovic, 2019-2024
+# Author Predrag Vlajkovic, 2024
 
 from __future__ import print_function
 import boto3, sys, getopt, yaml
 from uuid import uuid4
 
-global_cfg_ini_file="config.yaml"
+global_cfg_ini_file="./config.yaml"
 global_config = []
 
 def parse_config_file():
@@ -22,7 +22,14 @@ def get_ec2_tag(instance, tag_name, default="-"):
         for tag in instance["Tags"]:
             if tag["Key"].lower() == tag_name.lower():
                 tag_value = tag["Value"]
+    return tag_value
 
+def set_ec2_tag(instance, tag_name, default="-"):
+    tag_value = default
+    if "Tags" in instance:
+        for tag in instance["Tags"]:
+            if tag["Key"].lower() == tag_name.lower():
+                tag_value = tag["Value"]
     return tag_value
 
 def is_tag_value_matching (instance, tag_value):
@@ -104,9 +111,13 @@ def main(argv=None):
                 if (region_name=="*" or region_name==region["RegionName"]):
                     instances = get_instances(session, ec2_name, region, status, instance_id)
                     for instance in instances:
-                        if (is_tag_value_matching (instance, tag_value)):
-                            count += 1
-                            print (f" #{count:3d};  name: {get_ec2_tag(instance,'Name')};  profile: {profile};  region: {region['RegionName']};  id: {instance['InstanceId']};  status: {instance['State']['Name']}")
+                        tag_az = get_ec2_tag(instance,'AvailabilityZone')
+                        if (tag_az != "-"):
+                            real_az = instance['Placement']['AvailabilityZone']
+                            if (real_az != tag_az):
+                                count += 1
+                                print (f" #{count:3d};  profile: {profile} instance_name: {get_ec2_tag(instance,'Name')};    real_az: {real_az};   tag_az: {tag_az};")
+                                response = session.client('ec2').create_tags(Resources=[instance['InstanceId']], Tags=[{ 'Key':'AvailabilityZone', 'Value': real_az }] )
     if (count > 0):
         print (f"Total {count} instances found")
     else:
